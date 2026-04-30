@@ -32,6 +32,43 @@ function SelectButton({
   );
 }
 
+interface SalesContext {
+  targetAmount: string;
+  actualAmount: string;
+  capacityNextMonth: string;
+  capacityMonthAfter: string;
+  backlogCount: string;
+  backlogAmount: string;
+  memo: string;
+}
+
+const emptySalesContext: SalesContext = {
+  targetAmount: '',
+  actualAmount: '',
+  capacityNextMonth: '',
+  capacityMonthAfter: '',
+  backlogCount: '',
+  backlogAmount: '',
+  memo: '',
+};
+
+function buildSalesContextString(sc: SalesContext): string {
+  const lines: string[] = [];
+  if (sc.targetAmount || sc.actualAmount) {
+    lines.push(`【今月の受注状況】目標：${sc.targetAmount || '不明'}万円　実績：${sc.actualAmount || '不明'}万円`);
+  }
+  if (sc.capacityNextMonth || sc.capacityMonthAfter) {
+    lines.push(`【施工部隊の稼働率】来月：${sc.capacityNextMonth || '不明'}%　再来月：${sc.capacityMonthAfter || '不明'}%`);
+  }
+  if (sc.backlogCount || sc.backlogAmount) {
+    lines.push(`【現在の受注残】${sc.backlogCount || '不明'}件　計${sc.backlogAmount || '不明'}万円`);
+  }
+  if (sc.memo) {
+    lines.push(`【補足・懸念事項】${sc.memo}`);
+  }
+  return lines.join('\n');
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -46,6 +83,8 @@ export default function HomePage() {
     currentStatus: '',
   });
 
+  const [salesContext, setSalesContext] = useState<SalesContext>({ ...emptySalesContext });
+
   useEffect(() => {
     fetch('/api/employees')
       .then(r => r.json())
@@ -57,23 +96,34 @@ export default function HomePage() {
       .finally(() => setLoadingEmployees(false));
   }, []);
 
+  const selectedEmp = employees.find(e => e.employee_id === form.employee_id);
+  const isSales = selectedEmp?.職種 === '営業';
+
   const isReady =
-    form.employee_id && form.availableTime && form.location && form.currentStatus;
+    form.employee_id && form.availableTime && form.location && form.currentStatus &&
+    (!isSales || salesContext.capacityNextMonth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isReady) {
-      setError('すべての項目を選択してください');
+      setError(isSales
+        ? 'すべての項目を入力してください（営業は来月稼働率が必須です）'
+        : 'すべての項目を選択してください');
       return;
     }
     setGenerating(true);
     setError('');
 
+    const salesContextStr = isSales ? buildSalesContextString(salesContext) : '';
+    const finalStatus = isSales && salesContextStr
+      ? `${form.currentStatus}\n\n${salesContextStr}`
+      : form.currentStatus;
+
     try {
       const res = await fetch('/api/generate-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, currentStatus: finalStatus }),
       });
       const data = await res.json();
       if (data.success) {
@@ -81,6 +131,7 @@ export default function HomePage() {
           'currentTask',
           JSON.stringify({
             ...form,
+            currentStatus: finalStatus,
             aiOutput: data.aiOutput,
             employee: data.employee,
             timestamp: new Date().toISOString(),
@@ -97,11 +148,8 @@ export default function HomePage() {
     }
   };
 
-  const selectedEmp = employees.find(e => e.employee_id === form.employee_id);
-
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* ヘッダー */}
       <header className="bg-blue-700 text-white px-4 py-4 shadow-md">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
@@ -117,7 +165,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* メイン */}
       <main className="max-w-lg mx-auto px-4 py-5 space-y-4 pb-10">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
@@ -128,15 +175,16 @@ export default function HomePage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* ① 社員選択 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <label className="block text-sm font-bold text-gray-700 mb-3">
-              ① 社員名を選ぶ
-            </label>
+            <label className="block text-sm font-bold text-gray-700 mb-3">① 社員名を選ぶ</label>
             {loadingEmployees ? (
               <div className="text-gray-400 text-sm py-2 text-center">読み込み中...</div>
             ) : (
               <select
                 value={form.employee_id}
-                onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}
+                onChange={e => {
+                  setForm(f => ({ ...f, employee_id: e.target.value }));
+                  setSalesContext({ ...emptySalesContext });
+                }}
                 className="w-full border-2 border-gray-200 rounded-lg px-3 py-3 text-gray-800 text-base focus:border-blue-500 focus:outline-none"
               >
                 <option value="">-- 選択してください --</option>
@@ -156,9 +204,7 @@ export default function HomePage() {
 
           {/* ② 空き時間 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <label className="block text-sm font-bold text-gray-700 mb-3">
-              ② 空き時間
-            </label>
+            <label className="block text-sm font-bold text-gray-700 mb-3">② 空き時間</label>
             <div className="grid grid-cols-4 gap-2">
               {AVAILABLE_TIMES.map(t => (
                 <SelectButton
@@ -173,9 +219,7 @@ export default function HomePage() {
 
           {/* ③ 現在地 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <label className="block text-sm font-bold text-gray-700 mb-3">
-              ③ 現在地
-            </label>
+            <label className="block text-sm font-bold text-gray-700 mb-3">③ 現在地</label>
             <div className="grid grid-cols-2 gap-2">
               {LOCATIONS.map(l => (
                 <SelectButton
@@ -190,9 +234,7 @@ export default function HomePage() {
 
           {/* ④ 現在の状態 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <label className="block text-sm font-bold text-gray-700 mb-3">
-              ④ 現在の状態
-            </label>
+            <label className="block text-sm font-bold text-gray-700 mb-3">④ 現在の状態</label>
             <div className="grid grid-cols-3 gap-2">
               {STATUSES.map(s => (
                 <SelectButton
@@ -204,6 +246,110 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+
+          {/* ⑤ 営業専用：受注・稼働状況 */}
+          {isSales && (
+            <div className="bg-orange-50 rounded-xl shadow-sm border-2 border-orange-300 p-4 space-y-4">
+              <div>
+                <p className="text-sm font-bold text-orange-800">⑤ 営業状況を入力（AIが利益計画に使います）</p>
+                <p className="text-xs text-orange-600 mt-0.5">施工部隊の稼働状況と受注バランスを考慮した最適指示を出します</p>
+              </div>
+
+              {/* 今月受注 */}
+              <div>
+                <p className="text-xs font-bold text-gray-700 mb-2">今月の受注状況</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">目標（万円）</label>
+                    <input
+                      type="number"
+                      placeholder="例：500"
+                      value={salesContext.targetAmount}
+                      onChange={e => setSalesContext(s => ({ ...s, targetAmount: e.target.value }))}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">実績（万円）</label>
+                    <input
+                      type="number"
+                      placeholder="例：320"
+                      value={salesContext.actualAmount}
+                      onChange={e => setSalesContext(s => ({ ...s, actualAmount: e.target.value }))}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 施工稼働率 */}
+              <div>
+                <p className="text-xs font-bold text-gray-700 mb-2">施工部隊の稼働率 <span className="text-orange-600">★必須</span></p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">来月（%）</label>
+                    <input
+                      type="number"
+                      placeholder="例：85"
+                      value={salesContext.capacityNextMonth}
+                      onChange={e => setSalesContext(s => ({ ...s, capacityNextMonth: e.target.value }))}
+                      className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">再来月（%）</label>
+                    <input
+                      type="number"
+                      placeholder="例：60"
+                      value={salesContext.capacityMonthAfter}
+                      onChange={e => setSalesContext(s => ({ ...s, capacityMonthAfter: e.target.value }))}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">目安：75〜85%が適正。90%超で品質リスク。60%以下で固定費割れ</p>
+              </div>
+
+              {/* 受注残 */}
+              <div>
+                <p className="text-xs font-bold text-gray-700 mb-2">現在の受注残</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">件数</label>
+                    <input
+                      type="number"
+                      placeholder="例：4"
+                      value={salesContext.backlogCount}
+                      onChange={e => setSalesContext(s => ({ ...s, backlogCount: e.target.value }))}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">金額（万円）</label>
+                    <input
+                      type="number"
+                      placeholder="例：1200"
+                      value={salesContext.backlogAmount}
+                      onChange={e => setSalesContext(s => ({ ...s, backlogAmount: e.target.value }))}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 補足 */}
+              <div>
+                <label className="text-xs font-bold text-gray-700 mb-1 block">補足・懸念事項（任意）</label>
+                <textarea
+                  rows={2}
+                  placeholder="例：来月末に大型案件が竣工予定。夏場の閑散期対策が必要。低粗利の下請け案件が多い。"
+                  value={salesContext.memo}
+                  onChange={e => setSalesContext(s => ({ ...s, memo: e.target.value }))}
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-orange-400 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+          )}
 
           {/* 送信ボタン */}
           <button

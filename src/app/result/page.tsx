@@ -105,11 +105,14 @@ export default function ResultPage() {
   const steps = parseSteps(mainTaskContent);
   const taskName = extractField(mainTaskContent, 'タスク名') || extractField(mainTaskContent, '作業名');
   const taskCategory = extractField(mainTaskContent, 'カテゴリ');
-  const taskDetail = extractField(mainTaskContent, '内容');
-  const taskArtifact = extractField(mainTaskContent, '成果物');
-  const taskCondition = extractField(mainTaskContent, '完了条件');
+  const taskDetail = extractField(mainTaskContent, '内容') || extractField(mainTaskContent, '内容（2〜3文で背景と目的を説明）');
+  const taskArtifact = extractField(mainTaskContent, '成果物') || extractField(mainTaskContent, '成果物（何が完成するか具体的に）');
+  const taskCondition = extractField(mainTaskContent, '完了条件') || extractField(mainTaskContent, '完了条件（上司が30秒で合否判定できる基準）');
   const taskDuration = extractField(mainTaskContent, '所要時間');
-  const taskGrowth = extractField(mainTaskContent, '本人の成長ポイント');
+  const taskGrowth = extractField(mainTaskContent, '本人の成長ポイント') || extractField(mainTaskContent, '本人の成長ポイント（このタスクで何ができるようになるか具体的に）');
+  const taskMistakes = extractField(mainTaskContent, 'よくあるミスと対策');
+  const taskProfitReason = extractField(mainTaskContent, 'このタスクが会社利益に直結する理由');
+  const taskBenefit = extractField(mainTaskContent, '会社へのメリット') || extractField(mainTaskContent, '会社へのメリット（金額・時間・品質の数値推定を含める）');
 
   const nextTask = getSection(sections, '終わったら次にやるタスク');
   const reinstructSection = getSection(sections, '未完了・不十分だった場合の再指示');
@@ -190,27 +193,42 @@ export default function ResultPage() {
               )}
             </div>
 
-            {/* 成果物・完了条件 */}
-            {(taskArtifact || taskCondition || taskDuration) && (
-              <div className="bg-blue-800 px-4 py-3 space-y-1.5">
+            {/* 成果物・完了条件・メリット */}
+            {(taskArtifact || taskCondition || taskDuration || taskGrowth || taskBenefit || taskMistakes || taskProfitReason) && (
+              <div className="bg-blue-800 px-4 py-3 space-y-2">
                 {taskArtifact && (
                   <p className="text-sm text-blue-100">
-                    <span className="text-blue-300 font-bold">成果物：</span>{taskArtifact}
+                    <span className="text-blue-300 font-bold">📄 成果物：</span>{taskArtifact}
                   </p>
                 )}
                 {taskCondition && (
                   <p className="text-sm text-blue-100">
-                    <span className="text-blue-300 font-bold">完了条件：</span>{taskCondition}
+                    <span className="text-blue-300 font-bold">✅ 完了条件：</span>{taskCondition}
                   </p>
                 )}
                 {taskDuration && (
                   <p className="text-sm text-blue-100">
-                    <span className="text-blue-300 font-bold">目安時間：</span>{taskDuration}
+                    <span className="text-blue-300 font-bold">⏱ 目安時間：</span>{taskDuration}
+                  </p>
+                )}
+                {taskBenefit && (
+                  <p className="text-sm text-blue-100">
+                    <span className="text-blue-300 font-bold">💰 会社メリット：</span>{taskBenefit}
                   </p>
                 )}
                 {taskGrowth && (
                   <p className="text-sm text-blue-100">
-                    <span className="text-blue-300 font-bold">成長ポイント：</span>{taskGrowth}
+                    <span className="text-blue-300 font-bold">📈 成長ポイント：</span>{taskGrowth}
+                  </p>
+                )}
+                {taskProfitReason && (
+                  <p className="text-sm text-blue-100">
+                    <span className="text-blue-300 font-bold">🏢 利益直結：</span>{taskProfitReason}
+                  </p>
+                )}
+                {taskMistakes && (
+                  <p className="text-sm text-yellow-200">
+                    <span className="text-yellow-300 font-bold">⚠️ よくあるミス：</span>{taskMistakes}
                   </p>
                 )}
               </div>

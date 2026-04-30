@@ -675,7 +675,13 @@ function formatOutput(
       .slice(0, 2),
   ];
 
-  const stepsText = template.steps.map((s, i) => `  ${i + 1}. ${s}`).join('\n');
+  // ステップに時間配分を付ける（合計がdurationMinに近くなるよう均等割り）
+  const stepMin = Math.round(template.durationMin / template.steps.length);
+  const stepsText = template.steps.map((s, i) => {
+    // すでに【XX分】が含まれている場合はそのまま使う
+    if (/【\d+分】/.test(s)) return `  ${i + 1}. ${s}`;
+    return `  ${i + 1}. 【${stepMin}分】${s}`;
+  }).join('\n');
 
   const judgeType = isReinstructing ? '再指示' : level >= 5 ? 'レベルアップタスク' : '新規タスク';
   const judgeReason = isReinstructing
@@ -683,6 +689,9 @@ function formatOutput(
     : recentCategories.length > 0
       ? `直近は${recentCategories.join('・')}を実施済みのため、${template.category}カテゴリに進みます`
       : '初回または全カテゴリを網羅的に進めるため、このタスクを選択しました';
+
+  const nextTaskName = template.nextTaskName || `${priorities[1] || '安全管理'}カテゴリの次のタスク`;
+  const nextTaskContent = template.nextTaskContent || 'このタスクが完了したら上司に報告し、次の空き時間タスクを確認する';
 
   return `【社員情報】
 ・社員名：${employee.社員名}
@@ -700,49 +709,54 @@ function formatOutput(
 
 【AIが判断した優先課題】
 1位：${priorities[0] || template.category}
-理由：社員レベルと空き時間・場所を考慮した最適カテゴリです
+理由（会社利益・スキルへの具体的インパクト）：${template.companyBenefit}
 2位：${priorities[1] || '安全管理'}
-理由：継続的な安全意識の向上は全レベルで必要です
+理由：安全管理の継続的な強化は労災ゼロと法的リスク低減に直結します
 3位：${priorities[2] || '業務改善'}
-理由：日常業務の改善は常に会社メリットにつながります
+理由：業務プロセスの改善は1件あたりの工事利益率を高める基盤になります
 
 【今回の判断】
 ・種別（新規タスク / 再指示 / レベルアップタスク のいずれか）：${judgeType}
 ・判断理由：${judgeReason}
+・このタスクを選んだ理由（他の選択肢より優れている点）：${availableTime}という時間枠で完結でき、${location}で今すぐ着手できる。成果物が明確で上司が評価しやすい。
 
 【今すぐやるタスク】
 ・タスク名：${template.name}
 ・カテゴリ：${template.category}
-・内容：${template.content}
-・具体的手順：
+・内容（2〜3文で背景と目的を説明）：${template.content}。このタスクを実施することで${template.category}の課題を具体的に改善し、会社と個人の双方に価値をもたらします。
+・具体的手順（各ステップに【XX分】の時間配分を必ず記載）：
 ${stepsText}
-・成果物：${template.artifact}
-・完了条件：${template.completionCondition}
+・成果物（何が完成するか具体的に）：${template.artifact}
+・完了条件（上司が30秒で合否判定できる基準）：${template.completionCondition}
 ・所要時間：約${template.durationMin}分
-・会社へのメリット：${template.companyBenefit}
-・本人の成長ポイント：${template.growthPoint}
+・会社へのメリット（金額・時間・品質の数値推定を含める）：${template.companyBenefit}
+・本人の成長ポイント（このタスクで何ができるようになるか具体的に）：${template.growthPoint}
+・よくあるミスと対策：途中で作業が中断した場合は必ずどこまで完了したか記録を残すこと。成果物の品質を焦って下げないこと。わからない点は作業を止めて上司に確認すること。
+・このタスクが会社利益に直結する理由：${template.category}の改善は現場でのトラブル防止・品質向上・教育コスト削減のいずれかに貢献し、会社の粗利率改善につながります。
 
 【終わったら次にやるタスク】
-・タスク名：${template.nextTaskName || '上司に次の指示を確認する'}
-・内容：${template.nextTaskContent || 'このタスクが完了したら上司に報告し、次の空き時間タスクを確認する'}
-・成果物：確認記録メモ
-・完了条件：次のタスクが決まっている
+・タスク名：${nextTaskName}
+・内容：${nextTaskContent}
+・成果物：完了報告メモまたは次タスクの準備メモ
+・完了条件：上司に今日のタスク成果を報告済みで、次の行動が決まっている
 ・所要時間：5〜10分
+・スキルアップのポイント：報告の習慣化と次のアクションを自分で考える力が身につく
 
 【未完了・不十分だった場合の再指示】
-・不足している点：成果物（${template.artifact.split('＋')[0].trim()}）が未完成または品質不足
-・やり直し内容：手順1〜3を再度確認し、不足部分を補完する
-・追加の完了条件：上司が成果物を見て「OK」と言えるレベルになっていること
-・次回も同系統を続けるか：はい（${template.category}カテゴリを継続）
+・具体的に不足している部分：成果物（${template.artifact}）が未完成、または品質・記載内容が不十分
+・やり直し内容（前回より具体的に）：手順を最初から見直し、特に「成果物の品質基準」を確認してから作業する。わからない部分は上司に質問してから進める。
+・追加の完了条件：上司が成果物を見て「次の現場で使える」「後輩に渡せる」と判断できること
+・次回も同系統を続けるか（理由付きで）：はい（${template.category}カテゴリを継続。完了品質に達するまで同カテゴリを繰り返すことで本物のスキルが身につく）
 
 【完了した場合の次ステップ】
-・次に進めるタスク：${template.nextTaskName || `${priorities[1] || '安全管理'}カテゴリの次のタスク`}
-・理由：${template.category}カテゴリが完了したため、別カテゴリに挑戦して多角的なスキルを身につけます
+・次に進めるタスク（具体的なタスク名）：${nextTaskName}
+・理由（なぜこのタスクが次に最適か）：${template.category}カテゴリの基礎が固まったため、関連する別カテゴリに展開してスキルの幅を広げます
+・レベルアップへの道筋：各カテゴリのタスクを「完了」評価で積み上げることでLv${Math.min(level + 1, 7)}への昇格条件を満たしていきます
 
 【上司への確認ポイント】
-・確認する成果物：${template.artifact}
-・評価ポイント：①内容の正確さ ②規定の形式・フォーマットになっているか ③所要時間内に完了したか
-・Googleシートに記録する内容：タスク名「${template.name}」、カテゴリ「${template.category}」、状態、評価、成果物メモ`;
+・確認する成果物（具体的に何を見せるか）：${template.artifact}（完成したもの全て）
+・評価ポイント（何を見て合格とするか）：①成果物の完成度と正確さ ②所要時間内に完了したか ③次の現場・業務で使えるレベルか
+・このタスクが会社全体の改善につながる説明（上司への報告文案）：「本日の空き時間に${template.category}タスク「${template.name}」を実施しました。${template.companyBenefit}。成果物をご確認ください。」`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

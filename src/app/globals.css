@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', Meiryo, メイリオ,
+    'MS PGothic', sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  background-color: #f3f4f6;
+}
+
+/* スマホでタップ時のハイライトを除去 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* プリフォーマットテキストのフォント */
+pre {
+  font-family: inherit;
+}

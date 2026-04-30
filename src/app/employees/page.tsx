@@ -4,20 +4,38 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Employee } from '@/types';
 
-const LEVELS = ['1', '2', '3', '4', '5', '6', '7'];
-const LEVEL_LABELS: Record<string, string> = {
-  '1': 'Lv1 新人・未経験',
-  '2': 'Lv2 初級作業員',
-  '3': 'Lv3 一般作業員',
-  '4': 'Lv4 中堅作業員',
-  '5': 'Lv5 職長候補',
-  '6': 'Lv6 職長・リーダー',
-  '7': 'Lv7 管理者・幹部候補',
+const FIELD_LEVEL_LABELS: Record<string, string> = {
+  '1':  'Lv1 新人・未経験',
+  '2':  'Lv2 初級補助',
+  '3':  'Lv3 補助作業員',
+  '4':  'Lv4 一般作業員',
+  '5':  'Lv5 中堅作業員',
+  '6':  'Lv6 シニア作業員',
+  '7':  'Lv7 職長候補',
+  '8':  'Lv8 職長・リーダー',
+  '9':  'Lv9 主任',
+  '10': 'Lv10 管理者・幹部',
 };
 
-const emptyForm = {
+const SALES_LEVEL_LABELS: Record<string, string> = {
+  '1':  'Lv1 新人営業',
+  '2':  'Lv2 見習い営業',
+  '3':  'Lv3 初級営業',
+  '4':  'Lv4 一般営業',
+  '5':  'Lv5 中堅営業',
+  '6':  'Lv6 シニア営業',
+  '7':  'Lv7 主任営業',
+  '8':  'Lv8 営業リーダー',
+  '9':  'Lv9 営業課長',
+  '10': 'Lv10 営業部長',
+};
+
+const LEVELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+const emptyForm: Employee = {
   employee_id: '',
   社員名: '',
+  職種: '現場',
   レベル: '1',
   得意分野: '',
   苦手分野: '',
@@ -25,6 +43,11 @@ const emptyForm = {
   現在の状態: '待機中',
   最終更新日: '',
 };
+
+function getLevelLabel(emp: Employee): string {
+  const labels = emp.職種 === '営業' ? SALES_LEVEL_LABELS : FIELD_LEVEL_LABELS;
+  return labels[emp.レベル] || `Lv${emp.レベル}`;
+}
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -106,9 +129,10 @@ export default function EmployeesPage() {
     }
   };
 
+  const currentLevelLabels = form.職種 === '営業' ? SALES_LEVEL_LABELS : FIELD_LEVEL_LABELS;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
       <header className="bg-blue-700 text-white px-4 py-3 shadow-md sticky top-0 z-20">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={() => router.push('/')} className="text-blue-200 hover:text-white text-sm font-medium">
@@ -137,7 +161,6 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* 社員一覧 */}
         {loading ? (
           <div className="text-center text-gray-400 py-8">読み込み中...</div>
         ) : employees.length === 0 ? (
@@ -153,10 +176,17 @@ export default function EmployeesPage() {
               <div key={emp.employee_id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-900 text-base">{emp.社員名}</span>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                        {LEVEL_LABELS[emp.レベル] || `Lv${emp.レベル}`}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        emp.職種 === '営業'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {emp.職種 || '現場'}
+                      </span>
+                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-medium">
+                        {getLevelLabel(emp)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">ID: {emp.employee_id}</p>
@@ -190,7 +220,6 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* 追加・編集フォーム */}
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -218,6 +247,27 @@ export default function EmployeesPage() {
                   />
                 </Field>
 
+                <Field label="職種 *">
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['現場', '営業'] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, 職種: type, レベル: '1' }))}
+                        className={`py-3 px-4 rounded-lg text-sm font-bold border-2 transition-all ${
+                          form.職種 === type
+                            ? type === '営業'
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        {type === '現場' ? '🔨 現場スタッフ' : '📊 営業スタッフ'}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
                 <Field label="レベル *">
                   <div className="grid grid-cols-2 gap-2">
                     {LEVELS.map(lv => (
@@ -227,11 +277,13 @@ export default function EmployeesPage() {
                         onClick={() => setForm(f => ({ ...f, レベル: lv }))}
                         className={`py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all text-left ${
                           form.レベル === lv
-                            ? 'bg-blue-600 text-white border-blue-600'
+                            ? form.職種 === '営業'
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-blue-600 text-white border-blue-600'
                             : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
                         }`}
                       >
-                        {LEVEL_LABELS[lv]}
+                        {currentLevelLabels[lv]}
                       </button>
                     ))}
                   </div>
@@ -242,7 +294,7 @@ export default function EmployeesPage() {
                     type="text"
                     value={form.得意分野}
                     onChange={e => setForm(f => ({ ...f, 得意分野: e.target.value }))}
-                    placeholder="例：工具管理・材料管理"
+                    placeholder={form.職種 === '営業' ? '例：提案書作成・ヒアリング' : '例：工具管理・材料管理'}
                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
                   />
                 </Field>
@@ -252,7 +304,7 @@ export default function EmployeesPage() {
                     type="text"
                     value={form.苦手分野}
                     onChange={e => setForm(f => ({ ...f, 苦手分野: e.target.value }))}
-                    placeholder="例：書類作成・手順書"
+                    placeholder={form.職種 === '営業' ? '例：クロージング・新規開拓' : '例：書類作成・手順書'}
                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
                   />
                 </Field>
@@ -289,7 +341,6 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* 削除確認ダイアログ */}
         {deleteTarget && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">

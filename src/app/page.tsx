@@ -142,14 +142,14 @@ export default function HomePage() {
                 <option value="">-- 選択してください --</option>
                 {employees.map(emp => (
                   <option key={emp.employee_id} value={emp.employee_id}>
-                    {emp.社員名}（Lv{emp.レベル}）
+                    {emp.社員名}（{emp.職種 || '現場'} Lv{emp.レベル}）
                   </option>
                 ))}
               </select>
             )}
             {selectedEmp && (
               <p className="mt-2 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
-                レベル {selectedEmp.レベル} ｜ 得意：{selectedEmp.得意分野 || 'なし'}
+                {selectedEmp.職種 || '現場'} ｜ レベル {selectedEmp.レベル} ｜ 得意：{selectedEmp.得意分野 || 'なし'}
               </p>
             )}
           </div>

@@ -1,6 +1,7 @@
 export interface Employee {
   employee_id: string;
   社員名: string;
+  職種: '現場' | '営業';
   レベル: string;
   得意分野: string;
   苦手分野: string;

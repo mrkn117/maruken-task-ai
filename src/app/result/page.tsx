@@ -111,8 +111,11 @@ export default function ResultPage() {
   const taskDuration = extractField(mainTaskContent, '所要時間');
   const taskGrowth = extractField(mainTaskContent, '本人の成長ポイント') || extractField(mainTaskContent, '本人の成長ポイント（このタスクで何ができるようになるか具体的に）');
   const taskMistakes = extractField(mainTaskContent, 'よくあるミスと対策');
-  const taskProfitReason = extractField(mainTaskContent, 'このタスクが会社利益に直結する理由');
+  const taskProfitReason = extractField(mainTaskContent, 'このタスクが会社利益に直結する理由') || extractField(mainTaskContent, '会社の利益につながる仕組み（このタスクの成果が利益に変わるまでの流れ）');
   const taskBenefit = extractField(mainTaskContent, '会社へのメリット') || extractField(mainTaskContent, '会社へのメリット（金額・時間・品質の数値推定を含める）');
+  const taskProfitImpact = extractField(mainTaskContent, '推定利益インパクト（年間）');
+  const taskPurpose = extractField(mainTaskContent, '目的と背景（なぜこれが会社の利益になるか）') || extractField(mainTaskContent, '内容') || extractField(mainTaskContent, '内容（2〜3文で背景と目的を説明）');
+  const taskLevelUp = extractField(mainTaskContent, '本人のスキルアップと昇格への道筋') || extractField(mainTaskContent, '本人の成長ポイント') || extractField(mainTaskContent, '本人の成長ポイント（このタスクで何ができるようになるか具体的に）');
 
   const nextTask = getSection(sections, '終わったら次にやるタスク');
   const reinstructSection = getSection(sections, '未完了・不十分だった場合の再指示');
@@ -163,9 +166,20 @@ export default function ResultPage() {
                 <h2 className="text-xl font-bold leading-snug">{taskName}</h2>
               )}
 
-              {/* 内容説明 */}
-              {taskDetail && (
-                <p className="text-blue-100 text-sm leading-relaxed">{taskDetail}</p>
+              {/* 推定利益インパクト（目立つ場所に表示） */}
+              {taskProfitImpact && (
+                <div className="bg-yellow-400 text-gray-900 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <span className="text-lg font-black">💴</span>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700">推定利益インパクト（年間）</p>
+                    <p className="text-sm font-black">{taskProfitImpact}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 目的・背景 */}
+              {(taskPurpose || taskDetail) && (
+                <p className="text-blue-100 text-sm leading-relaxed">{taskPurpose || taskDetail}</p>
               )}
 
               {/* 具体的手順 */}
@@ -216,9 +230,9 @@ export default function ResultPage() {
                     <span className="text-blue-300 font-bold">💰 会社メリット：</span>{taskBenefit}
                   </p>
                 )}
-                {taskGrowth && (
+                {(taskGrowth || taskLevelUp) && (
                   <p className="text-sm text-blue-100">
-                    <span className="text-blue-300 font-bold">📈 成長ポイント：</span>{taskGrowth}
+                    <span className="text-blue-300 font-bold">📈 スキルアップ・昇格への道筋：</span>{taskLevelUp || taskGrowth}
                   </p>
                 )}
                 {taskProfitReason && (

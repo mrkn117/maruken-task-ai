@@ -116,6 +116,9 @@ export default function ResultPage() {
   const taskProfitImpact = extractField(mainTaskContent, '推定利益インパクト（年間）');
   const taskPurpose = extractField(mainTaskContent, '目的と背景（なぜこれが会社の利益になるか）') || extractField(mainTaskContent, '内容') || extractField(mainTaskContent, '内容（2〜3文で背景と目的を説明）');
   const taskLevelUp = extractField(mainTaskContent, '本人のスキルアップと昇格への道筋') || extractField(mainTaskContent, '本人の成長ポイント') || extractField(mainTaskContent, '本人の成長ポイント（このタスクで何ができるようになるか具体的に）');
+  const taskSkills = extractField(mainTaskContent, 'このタスクで習得・強化するスキル（具体的に3つ）');
+  const taskSkillCheck = extractField(mainTaskContent, 'スキル習得の確認方法（上司が1分で確認できる方法）');
+  const taskLevelLink = mainTaskContent.match(/・Lv\d+昇格への直接的なつながり[：:]\s*(.+?)(?=\n・|\n\n|$)/s)?.[1]?.trim() || '';
 
   const nextTask = getSection(sections, '終わったら次にやるタスク');
   const reinstructSection = getSection(sections, '未完了・不十分だった場合の再指示');
@@ -208,7 +211,7 @@ export default function ResultPage() {
             </div>
 
             {/* 成果物・完了条件・メリット */}
-            {(taskArtifact || taskCondition || taskDuration || taskGrowth || taskBenefit || taskMistakes || taskProfitReason) && (
+            {(taskArtifact || taskCondition || taskDuration || taskGrowth || taskBenefit || taskMistakes || taskProfitReason || taskSkills || taskSkillCheck || taskLevelLink) && (
               <div className="bg-blue-800 px-4 py-3 space-y-2">
                 {taskArtifact && (
                   <p className="text-sm text-blue-100">
@@ -230,7 +233,23 @@ export default function ResultPage() {
                     <span className="text-blue-300 font-bold">💰 会社メリット：</span>{taskBenefit}
                   </p>
                 )}
-                {(taskGrowth || taskLevelUp) && (
+                {taskSkills && (
+                  <div className="text-sm text-blue-100">
+                    <p className="text-blue-300 font-bold mb-1">🎓 習得・強化するスキル（3つ）：</p>
+                    <p className="whitespace-pre-wrap pl-2">{taskSkills}</p>
+                  </div>
+                )}
+                {taskSkillCheck && (
+                  <p className="text-sm text-blue-100">
+                    <span className="text-blue-300 font-bold">✔ スキル確認方法：</span>{taskSkillCheck}
+                  </p>
+                )}
+                {taskLevelLink && (
+                  <p className="text-sm text-green-200">
+                    <span className="text-green-300 font-bold">🚀 昇格への直結：</span>{taskLevelLink}
+                  </p>
+                )}
+                {(taskGrowth || taskLevelUp) && !taskLevelLink && (
                   <p className="text-sm text-blue-100">
                     <span className="text-blue-300 font-bold">📈 スキルアップ・昇格への道筋：</span>{taskLevelUp || taskGrowth}
                   </p>

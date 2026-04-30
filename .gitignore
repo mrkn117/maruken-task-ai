@@ -43,3 +43,5 @@ next-env.d.ts
 # local data storage (task history, AI output — employees.json は含める)
 .data/task_history.json
 .data/ai_task_output.json
+
+.vercel

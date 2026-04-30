@@ -30,6 +30,19 @@ const SALES_LEVEL_LABELS: Record<string, string> = {
   '10': 'Lv10 営業部長',
 };
 
+const KANRI_LEVEL_LABELS: Record<string, string> = {
+  '1':  'Lv1 統括見習い',
+  '2':  'Lv2 統括補助',
+  '3':  'Lv3 統括補佐',
+  '4':  'Lv4 統括担当',
+  '5':  'Lv5 統括リーダー',
+  '6':  'Lv6 上席統括',
+  '7':  'Lv7 統括主任',
+  '8':  'Lv8 統括課長',
+  '9':  'Lv9 統括部長',
+  '10': 'Lv10 最高現場責任者',
+};
+
 const LEVELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
 const emptyForm: Employee = {
@@ -45,7 +58,10 @@ const emptyForm: Employee = {
 };
 
 function getLevelLabel(emp: Employee): string {
-  const labels = emp.職種 === '営業' ? SALES_LEVEL_LABELS : FIELD_LEVEL_LABELS;
+  const labels =
+    emp.職種 === '営業' ? SALES_LEVEL_LABELS :
+    emp.職種 === '統括' ? KANRI_LEVEL_LABELS :
+    FIELD_LEVEL_LABELS;
   return labels[emp.レベル] || `Lv${emp.レベル}`;
 }
 
@@ -129,7 +145,10 @@ export default function EmployeesPage() {
     }
   };
 
-  const currentLevelLabels = form.職種 === '営業' ? SALES_LEVEL_LABELS : FIELD_LEVEL_LABELS;
+  const currentLevelLabels =
+    form.職種 === '営業' ? SALES_LEVEL_LABELS :
+    form.職種 === '統括' ? KANRI_LEVEL_LABELS :
+    FIELD_LEVEL_LABELS;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -179,11 +198,11 @@ export default function EmployeesPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-900 text-base">{emp.社員名}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        emp.職種 === '営業'
-                          ? 'bg-orange-100 text-orange-700'
-                          : 'bg-blue-100 text-blue-700'
+                        emp.職種 === '営業' ? 'bg-orange-100 text-orange-700' :
+                        emp.職種 === '統括' ? 'bg-green-100 text-green-700' :
+                        'bg-blue-100 text-blue-700'
                       }`}>
-                        {emp.職種 || '現場'}
+                        {emp.職種 === '統括' ? '統括責任者' : emp.職種 || '現場'}
                       </span>
                       <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-medium">
                         {getLevelLabel(emp)}
@@ -248,21 +267,23 @@ export default function EmployeesPage() {
                 </Field>
 
                 <Field label="職種 *">
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['現場', '営業'] as const).map(type => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: '現場', label: '🔨 現場', color: 'bg-blue-600 border-blue-600' },
+                      { value: '統括', label: '📋 統括', color: 'bg-green-600 border-green-600' },
+                      { value: '営業', label: '📊 営業', color: 'bg-orange-500 border-orange-500' },
+                    ] as const).map(({ value, label, color }) => (
                       <button
-                        key={type}
+                        key={value}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, 職種: type, レベル: '1' }))}
-                        className={`py-3 px-4 rounded-lg text-sm font-bold border-2 transition-all ${
-                          form.職種 === type
-                            ? type === '営業'
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : 'bg-blue-600 text-white border-blue-600'
+                        onClick={() => setForm(f => ({ ...f, 職種: value, レベル: '1' }))}
+                        className={`py-3 px-2 rounded-lg text-xs font-bold border-2 transition-all ${
+                          form.職種 === value
+                            ? `${color} text-white`
                             : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                         }`}
                       >
-                        {type === '現場' ? '🔨 現場スタッフ' : '📊 営業スタッフ'}
+                        {label}
                       </button>
                     ))}
                   </div>

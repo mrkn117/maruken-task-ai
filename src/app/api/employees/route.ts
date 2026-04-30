@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const employee: Employee = {
       employee_id: localNextEmployeeId(),
       社員名: 社員名.trim(),
-      職種: 職種 || '現場',
+      職種: (職種 === '営業' || 職種 === '統括') ? 職種 : '現場',
       レベル,
       得意分野: 得意分野 || '',
       苦手分野: 苦手分野 || '',
@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest) {
     const updated: Employee = {
       employee_id,
       社員名: (body.社員名 || '').trim(),
-      職種: body.職種 || '現場',
+      職種: (body.職種 === '営業' || body.職種 === '統括') ? body.職種 : '現場',
       レベル: body.レベル || '1',
       得意分野: body.得意分野 || '',
       苦手分野: body.苦手分野 || '',

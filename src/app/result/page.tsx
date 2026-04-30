@@ -124,7 +124,10 @@ export default function ResultPage() {
   const reinstructSection = getSection(sections, '未完了・不十分だった場合の再指示');
   const nextStepSection = getSection(sections, '完了した場合の次ステップ');
   const prioritySection = getSection(sections, 'AIが判断した優先課題');
+  const whySection = getSection(sections, 'なぜこの指示を出したか');
   const judgeSection = getSection(sections, '今回の判断');
+  const analysisSection = getSection(sections, 'この社員の現状分析と成長評価');
+  const visionSection = getSection(sections, '3ヶ月後のビジョン');
   const checkSection = getSection(sections, '上司への確認ポイント');
   const empSection = getSection(sections, '社員情報');
   const histSection = getSection(sections, '過去履歴の確認');
@@ -177,6 +180,14 @@ export default function ResultPage() {
                     <p className="text-xs font-bold text-gray-700">推定利益インパクト（年間）</p>
                     <p className="text-sm font-black">{taskProfitImpact}</p>
                   </div>
+                </div>
+              )}
+
+              {/* なぜこの指示か（最先端AI判断の根拠） */}
+              {whySection && (
+                <div className="bg-blue-700 rounded-xl px-3 py-3 border border-blue-500">
+                  <p className="text-yellow-300 text-xs font-bold mb-1.5">💡 なぜこの指示を出したか</p>
+                  <pre className="text-sm text-blue-50 whitespace-pre-wrap font-sans leading-relaxed">{whySection}</pre>
                 </div>
               )}
 
@@ -287,12 +298,22 @@ export default function ResultPage() {
 
         {showDetail && (
           <div className="space-y-3">
+            {analysisSection && (
+              <Card icon="📊" title="この社員の現状分析と成長評価" color="purple">
+                {analysisSection}
+              </Card>
+            )}
+            {visionSection && (
+              <Card icon="🔭" title="3ヶ月後のビジョン" color="blue-light">
+                {visionSection}
+              </Card>
+            )}
             {prioritySection && (
               <Card icon="🎯" title="AIが判断した優先課題" color="yellow">
                 {prioritySection}
               </Card>
             )}
-            {judgeSection && (
+            {!whySection && judgeSection && (
               <Card icon="💡" title="今回の判断理由" color="blue-light">
                 {judgeSection}
               </Card>

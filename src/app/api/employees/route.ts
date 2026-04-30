@@ -21,13 +21,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 社員名, レベル, 得意分野, 苦手分野, 性格傾向, 現在の状態 } = body as Partial<Employee>;
+    const { 社員名, 職種, レベル, 得意分野, 苦手分野, 性格傾向, 現在の状態 } = body as Partial<Employee>;
     if (!社員名 || !レベル) {
       return NextResponse.json({ success: false, error: '社員名とレベルは必須です' }, { status: 400 });
     }
     const employee: Employee = {
       employee_id: localNextEmployeeId(),
       社員名: 社員名.trim(),
+      職種: 職種 || '現場',
       レベル,
       得意分野: 得意分野 || '',
       苦手分野: 苦手分野 || '',
@@ -53,6 +54,7 @@ export async function PUT(request: NextRequest) {
     const updated: Employee = {
       employee_id,
       社員名: (body.社員名 || '').trim(),
+      職種: body.職種 || '現場',
       レベル: body.レベル || '1',
       得意分野: body.得意分野 || '',
       苦手分野: body.苦手分野 || '',

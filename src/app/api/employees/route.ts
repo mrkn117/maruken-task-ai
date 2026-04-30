@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEmployees } from '@/lib/googleSheets';
 import {
-  localSaveEmployee,
-  localUpdateEmployee,
-  localDeleteEmployee,
-  localNextEmployeeId,
-} from '@/lib/localStore';
+  getEmployees,
+  saveEmployee,
+  updateEmployee,
+  deleteEmployee,
+  nextEmployeeId,
+} from '@/lib/googleSheets';
 import { Employee } from '@/types';
 
 export async function GET() {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '社員名とレベルは必須です' }, { status: 400 });
     }
     const employee: Employee = {
-      employee_id: localNextEmployeeId(),
+      employee_id: await nextEmployeeId(),
       社員名: 社員名.trim(),
       職種: (職種 === '営業' || 職種 === '統括') ? 職種 : '現場',
       レベル,
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       現在の状態: 現在の状態 || '待機中',
       最終更新日: new Date().toISOString().split('T')[0],
     };
-    localSaveEmployee(employee);
+    await saveEmployee(employee);
     return NextResponse.json({ success: true, employee });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '社員の追加に失敗しました';
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
       現在の状態: body.現在の状態 || '待機中',
       最終更新日: new Date().toISOString().split('T')[0],
     };
-    localUpdateEmployee(updated);
+    await updateEmployee(updated);
     return NextResponse.json({ success: true, employee: updated });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '社員の更新に失敗しました';
@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest) {
     if (!employee_id) {
       return NextResponse.json({ success: false, error: 'employee_id は必須です' }, { status: 400 });
     }
-    localDeleteEmployee(employee_id);
+    await deleteEmployee(employee_id);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '社員の削除に失敗しました';

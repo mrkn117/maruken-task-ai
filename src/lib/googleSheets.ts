@@ -72,9 +72,109 @@ export async function getEmployees(): Promise<Employee[]> {
   const sheets = await getDirectSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
-    range: 'employees!A:H',
+    range: 'employees!A:I',
   });
   return rowsToObjects<Employee>(res.data.values as string[][] || []);
+}
+
+export async function nextEmployeeId(): Promise<string> {
+  if (isLocalMode()) {
+    const { localNextEmployeeId } = await import('./localStore');
+    return localNextEmployeeId();
+  }
+  const employees = await getEmployees();
+  if (employees.length === 0) return 'E001';
+  const nums = employees.map(e => parseInt(e.employee_id.replace(/\D/g, '')) || 0);
+  return `E${String(Math.max(...nums) + 1).padStart(3, '0')}`;
+}
+
+export async function saveEmployee(employee: Employee): Promise<void> {
+  if (isLocalMode()) {
+    const { localSaveEmployee } = await import('./localStore');
+    return localSaveEmployee(employee);
+  }
+  if (isGasMode()) {
+    await gasPost({ action: 'saveEmployee', ...employee });
+    return;
+  }
+  const sheets = await getDirectSheets();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+    range: 'employees!A:I',
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[
+        employee.employee_id, employee.社員名, employee.職種, employee.レベル,
+        employee.得意分野, employee.苦手分野, employee.性格傾向, employee.現在の状態, employee.最終更新日,
+      ]],
+    },
+  });
+}
+
+export async function updateEmployee(employee: Employee): Promise<void> {
+  if (isLocalMode()) {
+    const { localUpdateEmployee } = await import('./localStore');
+    return localUpdateEmployee(employee);
+  }
+  if (isGasMode()) {
+    await gasPost({ action: 'updateEmployee', ...employee });
+    return;
+  }
+  const sheets = await getDirectSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+    range: 'employees!A:A',
+  });
+  const rows = (res.data.values as string[][] || []);
+  const rowIndex = rows.findIndex((row, i) => i > 0 && row[0] === employee.employee_id);
+  if (rowIndex === -1) throw new Error(`社員ID ${employee.employee_id} が見つかりません`);
+  const sheetRow = rowIndex + 1;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+    range: `employees!A${sheetRow}:I${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[
+        employee.employee_id, employee.社員名, employee.職種, employee.レベル,
+        employee.得意分野, employee.苦手分野, employee.性格傾向, employee.現在の状態, employee.最終更新日,
+      ]],
+    },
+  });
+}
+
+export async function deleteEmployee(employee_id: string): Promise<void> {
+  if (isLocalMode()) {
+    const { localDeleteEmployee } = await import('./localStore');
+    return localDeleteEmployee(employee_id);
+  }
+  if (isGasMode()) {
+    await gasPost({ action: 'deleteEmployee', employee_id });
+    return;
+  }
+  const sheets = await getDirectSheets();
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+  });
+  const sheetMeta = spreadsheet.data.sheets?.find(s => s.properties?.title === 'employees');
+  const sheetId = sheetMeta?.properties?.sheetId;
+  if (sheetId === undefined) throw new Error('employees シートが見つかりません');
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+    range: 'employees!A:A',
+  });
+  const rows = (res.data.values as string[][] || []);
+  const rowIndex = rows.findIndex((row, i) => i > 0 && row[0] === employee_id);
+  if (rowIndex === -1) throw new Error(`社員ID ${employee_id} が見つかりません`);
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1 },
+        },
+      }],
+    },
+  });
 }
 
 export async function getTaskHistory(employee_id: string, limit = 5): Promise<TaskHistory[]> {

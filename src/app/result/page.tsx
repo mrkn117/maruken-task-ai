@@ -46,7 +46,7 @@ function parseSteps(content: string): string[] {
 }
 
 function extractField(content: string, label: string): string {
-  const m = content.match(new RegExp(`・${label}[：:]\s*(.+?)(?=\n・|\n\n|$)`, 's'));
+  const m = content.match(new RegExp(`・${label}[：:][ \\t]*([^]*?)(?=\\n・|\\n\\n|$)`));
   return m ? m[1].trim() : '';
 }
 
@@ -118,7 +118,7 @@ export default function ResultPage() {
   const taskLevelUp = extractField(mainTaskContent, '本人のスキルアップと昇格への道筋') || extractField(mainTaskContent, '本人の成長ポイント') || extractField(mainTaskContent, '本人の成長ポイント（このタスクで何ができるようになるか具体的に）');
   const taskSkills = extractField(mainTaskContent, 'このタスクで習得・強化するスキル（具体的に3つ）');
   const taskSkillCheck = extractField(mainTaskContent, 'スキル習得の確認方法（上司が1分で確認できる方法）');
-  const taskLevelLink = mainTaskContent.match(/・Lv\d+昇格への直接的なつながり[：:]\s*(.+?)(?=\n・|\n\n|$)/s)?.[1]?.trim() || '';
+  const taskLevelLink = mainTaskContent.match(/・Lv\d+昇格への直接的なつながり[：:][\s]*([^]*?)(?=\n・|\n\n|$)/)?.[1]?.trim() || '';
 
   const nextTask = getSection(sections, '終わったら次にやるタスク');
   const reinstructSection = getSection(sections, '未完了・不十分だった場合の再指示');

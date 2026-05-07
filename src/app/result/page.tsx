@@ -10,6 +10,15 @@ interface Section {
   content: string;
 }
 
+function normalizeAIOutput(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')        // **太字** → 太字
+    .replace(/^#{1,3}\s+/gm, '')            // ## 見出し → 見出し
+    .replace(/^---+$/gm, '')                // --- 区切り線 → 削除
+    .replace(/^[-*]\s+/gm, '・')            // - 箇条書き → ・
+    .replace(/^\*\s+/gm, '・');             // * 箇条書き → ・
+}
+
 function parseAIOutput(text: string): Section[] {
   if (!text) return [];
   const sections: Section[] = [];
@@ -33,11 +42,20 @@ function getSection(sections: Section[], title: string): string {
 function parseSteps(content: string): string[] {
   const lines = content.split('\n');
   const steps: string[] = [];
+  let current = '';
+
   for (const line of lines) {
     const m = line.match(/^\s*[・•]?\s*(\d+)[.)．。]\s*(.+)/);
-    if (m) steps.push(m[2].trim());
+    if (m) {
+      if (current) steps.push(current.trim());
+      current = m[2].trim();
+    } else if (current && line.trim()) {
+      current += '\n' + line.trim();
+    }
   }
+  if (current) steps.push(current.trim());
   if (steps.length > 0) return steps;
+
   // 箇条書き（・）形式
   return lines
     .filter(l => l.trim().startsWith('・') || l.trim().startsWith('•'))
@@ -58,6 +76,7 @@ export default function ResultPage() {
   const [savedTaskId, setSavedTaskId] = useState('');
   const [error, setError] = useState('');
   const [showDetail, setShowDetail] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem('currentTask');
@@ -100,7 +119,7 @@ export default function ResultPage() {
     );
   }
 
-  const sections = parseAIOutput(taskData.aiOutput);
+  const sections = parseAIOutput(normalizeAIOutput(taskData.aiOutput));
   const mainTaskContent = getSection(sections, '今すぐやるタスク');
   const steps = parseSteps(mainTaskContent);
   const taskName = extractField(mainTaskContent, 'タスク名') || extractField(mainTaskContent, '作業名');
@@ -200,13 +219,13 @@ export default function ResultPage() {
               {steps.length > 0 && (
                 <div>
                   <p className="text-blue-200 text-xs font-bold mb-2">📋 具体的な手順</p>
-                  <ol className="space-y-2">
+                  <ol className="space-y-3">
                     {steps.map((step, i) => (
                       <li key={i} className="flex gap-2 text-sm">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                        <span className="bg-blue-500 text-white rounded-full min-w-[1.5rem] h-6 px-1 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                           {i + 1}
                         </span>
-                        <span className="text-blue-50 leading-relaxed">{step}</span>
+                        <pre className="text-blue-50 leading-relaxed whitespace-pre-wrap font-sans flex-1">{step}</pre>
                       </li>
                     ))}
                   </ol>
@@ -344,6 +363,23 @@ export default function ResultPage() {
                 {histSection && <pre className="text-xs text-gray-600 whitespace-pre-wrap font-sans">{histSection}</pre>}
               </Card>
             )}
+          </div>
+        )}
+
+        {/* ─── AI全文表示（開閉） ─── */}
+        <button
+          onClick={() => setShowRaw(v => !v)}
+          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-2 rounded-xl text-xs transition-colors border border-gray-300"
+        >
+          {showRaw ? '▲ AI生成テキストを閉じる' : '▼ AI生成テキストを全文表示する'}
+        </button>
+
+        {showRaw && (
+          <div className="bg-white rounded-xl border border-gray-300 p-4">
+            <p className="text-xs font-bold text-gray-500 mb-2">📄 AI出力（全文）</p>
+            <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+              {taskData.aiOutput}
+            </pre>
           </div>
         )}
 

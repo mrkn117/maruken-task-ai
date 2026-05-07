@@ -1061,6 +1061,47 @@ ${incompleteInstruction}
 
 // ─── エントリポイント ──────────────────────────────────────────────
 
+function buildTimeContext(): string {
+  const now = new Date();
+  // JST = UTC+9
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const hour = jst.getUTCHours();
+  const dow = ['日', '月', '火', '水', '木', '金', '土'][jst.getUTCDay()];
+  const timeLabel =
+    hour < 7  ? '早朝' :
+    hour < 9  ? '始業前' :
+    hour < 11 ? '午前（朝）' :
+    hour < 12 ? '午前（昼前）' :
+    hour < 13 ? '昼休み中' :
+    hour < 14 ? '昼休み明け' :
+    hour < 16 ? '午後（早）' :
+    hour < 17 ? '終業1時間前' :
+    hour < 19 ? '終業後・残業時間' : '夜間';
+
+  const timeHint =
+    dow === '月' ? '月曜：週のスタート。今週の計画・目標設定・段取りに向いたタスクを優先。' :
+    dow === '金' ? '金曜：週末前。今週の振り返り・記録整理・来週の準備に向いたタスクを優先。' :
+    dow === '土' || dow === '日' ? '週末：通常業務外。自己学習・資料整理など自主的な成長タスクを優先。' :
+    '平日中盤：スキル習得・成果物作成など、集中して取り組める実践タスクを選ぶ。';
+
+  const hourHint =
+    hour < 9  ? '始業前：頭が冷静。暗記・計画立案・チェックリスト作成に最適。' :
+    hour < 11 ? '午前（集中力ピーク）：難しい作業・手順書作成・分析タスクに最適。' :
+    hour < 13 ? '昼前：軽めの整理・写真整理・材料確認など20〜30分で終わるタスクを優先。' :
+    hour < 14 ? '昼休み明け（眠気あり）：手を動かす実作業・写真整理・簡単な記録作業に最適。' :
+    hour < 16 ? '午後：安定した集中。演習・練習記録・教材作成など実践タスクに最適。' :
+    hour < 18 ? '終業前：明日に向けた準備・振り返り記録・チェックリスト確認に最適。' :
+    '終業後：自己学習・翌日の段取り確認など残業時間向けタスクを選ぶ。';
+
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 現在の時刻・曜日コンテキスト（タスク選定に必ず活かすこと）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+・現在時刻：${dow}曜日 ${hour}時台（${timeLabel}）
+・時間帯ヒント：${hourHint}
+・曜日ヒント：${timeHint}
+→ 上記の時間帯・曜日の特性を踏まえ、「今この瞬間に着手できる最適なタスク」を選ぶこと。`;
+}
+
 export function buildTaskPrompt(
   employee: Employee,
   history: TaskHistory[],
@@ -1069,11 +1110,21 @@ export function buildTaskPrompt(
   currentStatus: string
 ): string {
   const jobType = employee.職種 || '現場';
+  const timeCtx = buildTimeContext();
+
   if (jobType === '営業') {
-    return buildSalesPrompt(employee, history, availableTime, location, currentStatus);
+    return injectTimeCtx(buildSalesPrompt(employee, history, availableTime, location, currentStatus), timeCtx);
   }
   if (jobType === '統括') {
-    return buildKanriPrompt(employee, history, availableTime, location, currentStatus);
+    return injectTimeCtx(buildKanriPrompt(employee, history, availableTime, location, currentStatus), timeCtx);
   }
-  return buildFieldPrompt(employee, history, availableTime, location, currentStatus);
+  return injectTimeCtx(buildFieldPrompt(employee, history, availableTime, location, currentStatus), timeCtx);
+}
+
+// 「■ 対象社員」セクションの直前に時刻コンテキストを挿入する
+function injectTimeCtx(prompt: string, timeCtx: string): string {
+  const marker = '■ 対象社員';
+  const idx = prompt.indexOf(marker);
+  if (idx === -1) return timeCtx + '\n\n' + prompt;
+  return prompt.slice(0, idx) + timeCtx + '\n\n' + prompt.slice(idx);
 }

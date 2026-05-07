@@ -20,21 +20,22 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { 社員名, 職種, レベル, 得意分野, 苦手分野, 性格傾向, 現在の状態 } = body as Partial<Employee>;
-    if (!社員名 || !レベル) {
+    const body = await request.json() as Partial<Employee>;
+    if (!body.社員名 || !body.レベル) {
       return NextResponse.json({ success: false, error: '社員名とレベルは必須です' }, { status: 400 });
     }
     const employee: Employee = {
       employee_id: await nextEmployeeId(),
-      社員名: 社員名.trim(),
-      職種: (職種 === '営業' || 職種 === '統括') ? 職種 : '現場',
-      レベル,
-      得意分野: 得意分野 || '',
-      苦手分野: 苦手分野 || '',
-      性格傾向: 性格傾向 || '',
-      現在の状態: 現在の状態 || '待機中',
+      社員名: body.社員名.trim(),
+      職種: (body.職種 === '営業' || body.職種 === '統括') ? body.職種 : '現場',
+      レベル: body.レベル,
+      得意分野: body.得意分野 || '',
+      苦手分野: body.苦手分野 || '',
+      性格傾向: body.性格傾向 || '',
+      現在の状態: body.現在の状態 || '待機中',
       最終更新日: new Date().toISOString().split('T')[0],
+      profile_tags: body.profile_tags ?? [],
+      備考: body.備考 || '',
     };
     await saveEmployee(employee);
     return NextResponse.json({ success: true, employee });
@@ -46,13 +47,12 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { employee_id } = body as Partial<Employee>;
-    if (!employee_id) {
+    const body = await request.json() as Partial<Employee>;
+    if (!body.employee_id) {
       return NextResponse.json({ success: false, error: 'employee_id は必須です' }, { status: 400 });
     }
     const updated: Employee = {
-      employee_id,
+      employee_id: body.employee_id,
       社員名: (body.社員名 || '').trim(),
       職種: (body.職種 === '営業' || body.職種 === '統括') ? body.職種 : '現場',
       レベル: body.レベル || '1',
@@ -61,6 +61,8 @@ export async function PUT(request: NextRequest) {
       性格傾向: body.性格傾向 || '',
       現在の状態: body.現在の状態 || '待機中',
       最終更新日: new Date().toISOString().split('T')[0],
+      profile_tags: body.profile_tags ?? [],
+      備考: body.備考 || '',
     };
     await updateEmployee(updated);
     return NextResponse.json({ success: true, employee: updated });

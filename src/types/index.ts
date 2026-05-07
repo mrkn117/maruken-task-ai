@@ -8,6 +8,8 @@ export interface Employee {
   性格傾向: string;
   現在の状態: string;
   最終更新日: string;
+  profile_tags?: string[];
+  備考?: string;
 }
 
 export interface TaskHistory {

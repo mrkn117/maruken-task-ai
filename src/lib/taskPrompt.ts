@@ -1,4 +1,5 @@
 import { Employee, TaskHistory } from '../types';
+import { buildProfilePromptSection } from './profileTags';
 
 // ─── 現場スタッフ（Lv1〜10） ───────────────────────────────────────
 
@@ -419,6 +420,9 @@ STEP4【時間検証】ステップ合計が${minutes}分±5%以内か？はみ�
 ・得意：${employee.得意分野 || 'なし'}
 ・苦手：${employee.苦手分野 || 'なし（苦手分野こそスキルアップタスクの対象にすること）'}
 ・性格：${employee.性格傾向 || '不明'}
+・備考：${employee.備考 || 'なし'}
+
+${buildProfilePromptSection(employee.profile_tags, level)}
 
 ■ 現在の状況
 ・現在地：${location}　空き時間：${availableTime}（${minutes}分）　状態：${currentStatus}
@@ -685,6 +689,9 @@ STEP4【時間検証】ステップ合計が${minutes}分±5%以内か？はみ�
 ・得意：${employee.得意分野 || 'なし'}
 ・苦手：${employee.苦手分野 || 'なし'}
 ・性格：${employee.性格傾向 || '不明'}
+・備考：${employee.備考 || 'なし'}
+
+${buildProfilePromptSection(employee.profile_tags, level)}
 
 ■ 現在地：${location}　空き時間：${availableTime}（${minutes}分）
 
@@ -1030,6 +1037,9 @@ STEP4【時間検証】ステップ合計が${minutes}分±5%以内か？はみ�
 ・得意：${employee.得意分野 || 'なし'}
 ・苦手：${employee.苦手分野 || 'なし（苦手分野こそ強化タスクの対象にすること）'}
 ・性格：${employee.性格傾向 || '不明'}
+・備考：${employee.備考 || 'なし'}
+
+${buildProfilePromptSection(employee.profile_tags, level)}
 
 ■ 現在の状況
 ・現在地：${location}　空き時間：${availableTime}（${minutes}分）　状態：${currentStatus}

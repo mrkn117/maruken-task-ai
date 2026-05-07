@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Employee } from '@/types';
+import { PROFILE_TAG_GROUPS, TAG_LABEL_MAP } from '@/lib/profileTags';
 
 const FIELD_LEVEL_LABELS: Record<string, string> = {
   '1':  'Lv1 新人・未経験',
@@ -16,34 +17,19 @@ const FIELD_LEVEL_LABELS: Record<string, string> = {
   '9':  'Lv9 主任',
   '10': 'Lv10 管理者・幹部',
 };
-
 const SALES_LEVEL_LABELS: Record<string, string> = {
-  '1':  'Lv1 新人営業',
-  '2':  'Lv2 見習い営業',
-  '3':  'Lv3 初級営業',
-  '4':  'Lv4 一般営業',
-  '5':  'Lv5 中堅営業',
-  '6':  'Lv6 シニア営業',
-  '7':  'Lv7 主任営業',
-  '8':  'Lv8 営業リーダー',
-  '9':  'Lv9 営業課長',
+  '1':  'Lv1 新人営業',  '2':  'Lv2 見習い営業', '3':  'Lv3 初級営業',
+  '4':  'Lv4 一般営業',  '5':  'Lv5 中堅営業',   '6':  'Lv6 シニア営業',
+  '7':  'Lv7 主任営業',  '8':  'Lv8 営業リーダー','9':  'Lv9 営業課長',
   '10': 'Lv10 営業部長',
 };
-
 const KANRI_LEVEL_LABELS: Record<string, string> = {
-  '1':  'Lv1 統括見習い',
-  '2':  'Lv2 統括補助',
-  '3':  'Lv3 統括補佐',
-  '4':  'Lv4 統括担当',
-  '5':  'Lv5 統括リーダー',
-  '6':  'Lv6 上席統括',
-  '7':  'Lv7 統括主任',
-  '8':  'Lv8 統括課長',
-  '9':  'Lv9 統括部長',
+  '1':  'Lv1 統括見習い', '2':  'Lv2 統括補助',  '3':  'Lv3 統括補佐',
+  '4':  'Lv4 統括担当',   '5':  'Lv5 統括リーダー','6':  'Lv6 上席統括',
+  '7':  'Lv7 統括主任',   '8':  'Lv8 統括課長',  '9':  'Lv9 統括部長',
   '10': 'Lv10 最高現場責任者',
 };
-
-const LEVELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+const LEVELS = ['1','2','3','4','5','6','7','8','9','10'];
 
 const emptyForm: Employee = {
   employee_id: '',
@@ -55,6 +41,8 @@ const emptyForm: Employee = {
   性格傾向: '',
   現在の状態: '待機中',
   最終更新日: '',
+  profile_tags: [],
+  備考: '',
 };
 
 function getLevelLabel(emp: Employee): string {
@@ -63,6 +51,22 @@ function getLevelLabel(emp: Employee): string {
     emp.職種 === '統括' ? KANRI_LEVEL_LABELS :
     FIELD_LEVEL_LABELS;
   return labels[emp.レベル] || `Lv${emp.レベル}`;
+}
+
+function ProfileTagSummary({ tags }: { tags?: string[] }) {
+  if (!tags || tags.length === 0) return null;
+  const labels = tags.map(t => TAG_LABEL_MAP[t]).filter(Boolean);
+  if (labels.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {labels.slice(0, 4).map(l => (
+        <span key={l} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">{l}</span>
+      ))}
+      {labels.length > 4 && (
+        <span className="text-xs text-gray-400">+{labels.length - 4}</span>
+      )}
+    </div>
+  );
 }
 
 export default function EmployeesPage() {
@@ -76,6 +80,7 @@ export default function EmployeesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>('style');
 
   const load = () => {
     setLoading(true);
@@ -93,14 +98,36 @@ export default function EmployeesPage() {
     setShowForm(true);
     setError('');
     setSuccess('');
+    setExpandedSection('style');
   };
 
   const openEdit = (emp: Employee) => {
-    setForm({ ...emp });
+    setForm({ ...emp, profile_tags: emp.profile_tags ?? [] });
     setEditingId(emp.employee_id);
     setShowForm(true);
     setError('');
     setSuccess('');
+    setExpandedSection('style');
+  };
+
+  const toggleTag = (tagId: string, single: boolean) => {
+    setForm(f => {
+      const current = f.profile_tags ?? [];
+      // single-select: remove all tags from same group first
+      if (single) {
+        const group = PROFILE_TAG_GROUPS.find(g => g.options.some(o => o.id === tagId));
+        const groupIds = group?.options.map(o => o.id) ?? [];
+        const removed = current.filter(t => !groupIds.includes(t));
+        // if already selected, just deselect
+        return current.includes(tagId)
+          ? { ...f, profile_tags: removed }
+          : { ...f, profile_tags: [...removed, tagId] };
+      }
+      // multi-select: toggle
+      return current.includes(tagId)
+        ? { ...f, profile_tags: current.filter(t => t !== tagId) }
+        : { ...f, profile_tags: [...current, tagId] };
+    });
   };
 
   const handleSave = async () => {
@@ -150,6 +177,8 @@ export default function EmployeesPage() {
     form.職種 === '統括' ? KANRI_LEVEL_LABELS :
     FIELD_LEVEL_LABELS;
 
+  const selectedTagCount = (form.profile_tags ?? []).length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-blue-700 text-white px-4 py-3 shadow-md sticky top-0 z-20">
@@ -168,13 +197,12 @@ export default function EmployeesPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-10">
-
         {success && (
           <div className="bg-green-50 border border-green-300 text-green-700 rounded-xl px-4 py-3 text-sm font-medium">
             ✅ {success}
           </div>
         )}
-        {error && (
+        {error && !showForm && (
           <div className="bg-red-50 border border-red-300 text-red-700 rounded-xl px-4 py-3 text-sm">
             ⚠️ {error}
           </div>
@@ -208,14 +236,12 @@ export default function EmployeesPage() {
                         {getLevelLabel(emp)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">ID: {emp.employee_id}</p>
-                    {emp.得意分野 && (
+                    <p className="text-xs text-gray-400 mt-0.5">ID: {emp.employee_id}</p>
+                    <ProfileTagSummary tags={emp.profile_tags} />
+                    {!emp.profile_tags?.length && emp.得意分野 && (
                       <p className="text-xs text-green-700 mt-1">得意：{emp.得意分野}</p>
                     )}
-                    {emp.苦手分野 && (
-                      <p className="text-xs text-orange-600 mt-0.5">苦手：{emp.苦手分野}</p>
-                    )}
-                    {emp.性格傾向 && (
+                    {!emp.profile_tags?.length && emp.性格傾向 && (
                       <p className="text-xs text-gray-500 mt-0.5">傾向：{emp.性格傾向}</p>
                     )}
                   </div>
@@ -239,106 +265,149 @@ export default function EmployeesPage() {
           </div>
         )}
 
+        {/* ─── 社員フォームモーダル ─── */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white px-4 py-3 border-b flex items-center justify-between">
-                <h2 className="font-bold text-gray-900">
-                  {editingId ? '社員情報を編集' : '新しい社員を追加'}
-                </h2>
-                <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-end sm:items-center justify-center">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white px-4 py-3 border-b flex items-center justify-between z-10">
+                <div>
+                  <h2 className="font-bold text-gray-900">
+                    {editingId ? '社員情報を編集' : '新しい社員を追加'}
+                  </h2>
+                  {selectedTagCount > 0 && (
+                    <p className="text-xs text-blue-600 mt-0.5">{selectedTagCount}項目選択済み</p>
+                  )}
+                </div>
+                <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">✕</button>
               </div>
 
-              <div className="px-4 py-4 space-y-4">
+              <div className="px-4 py-4 space-y-5">
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
                     ⚠️ {error}
                   </div>
                 )}
 
-                <Field label="社員名 *">
-                  <input
-                    type="text"
-                    value={form.社員名}
-                    onChange={e => setForm(f => ({ ...f, 社員名: e.target.value }))}
-                    placeholder="例：山田 太郎"
-                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-                  />
-                </Field>
+                {/* 基本情報 */}
+                <Section label="基本情報">
+                  <div className="space-y-3">
+                    <Field label="社員名 *">
+                      <input
+                        type="text"
+                        value={form.社員名}
+                        onChange={e => setForm(f => ({ ...f, 社員名: e.target.value }))}
+                        placeholder="例：山田 太郎"
+                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </Field>
 
-                <Field label="職種 *">
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: '現場', label: '🔨 現場', color: 'bg-blue-600 border-blue-600' },
-                      { value: '統括', label: '📋 統括', color: 'bg-green-600 border-green-600' },
-                      { value: '営業', label: '📊 営業', color: 'bg-orange-500 border-orange-500' },
-                    ] as const).map(({ value, label, color }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, 職種: value, レベル: '1' }))}
-                        className={`py-3 px-2 rounded-lg text-xs font-bold border-2 transition-all ${
-                          form.職種 === value
-                            ? `${color} text-white`
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <Field label="職種 *">
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: '現場', label: '🔨 現場', color: 'bg-blue-600 border-blue-600' },
+                          { value: '統括', label: '📋 統括', color: 'bg-green-600 border-green-600' },
+                          { value: '営業', label: '📊 営業', color: 'bg-orange-500 border-orange-500' },
+                        ] as const).map(({ value, label, color }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, 職種: value, レベル: '1' }))}
+                            className={`py-3 rounded-lg text-xs font-bold border-2 transition-all ${
+                              form.職種 === value ? `${color} text-white` : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <Field label="レベル *">
+                      <div className="grid grid-cols-2 gap-2">
+                        {LEVELS.map(lv => (
+                          <button
+                            key={lv}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, レベル: lv }))}
+                            className={`py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all text-left ${
+                              form.レベル === lv
+                                ? form.職種 === '営業' ? 'bg-orange-500 text-white border-orange-500'
+                                  : form.職種 === '統括' ? 'bg-green-600 text-white border-green-600'
+                                  : 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                            }`}
+                          >
+                            {currentLevelLabels[lv]}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
                   </div>
-                </Field>
+                </Section>
 
-                <Field label="レベル *">
-                  <div className="grid grid-cols-2 gap-2">
-                    {LEVELS.map(lv => (
-                      <button
-                        key={lv}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, レベル: lv }))}
-                        className={`py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all text-left ${
-                          form.レベル === lv
-                            ? form.職種 === '営業'
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
-                        }`}
-                      >
-                        {currentLevelLabels[lv]}
-                      </button>
-                    ))}
+                {/* プロフィールチェックリスト */}
+                <Section label="プロフィール詳細（AIがこの人に合った指示を出すために使用）">
+                  <div className="space-y-3">
+                    {PROFILE_TAG_GROUPS.map(group => {
+                      const isOpen = expandedSection === group.id;
+                      const selectedInGroup = (form.profile_tags ?? []).filter(t =>
+                        group.options.some(o => o.id === t)
+                      );
+                      return (
+                        <div key={group.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedSection(isOpen ? null : group.id)}
+                            className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="text-xs font-bold text-gray-700">{group.label}</span>
+                              {selectedInGroup.length > 0 && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
+                                  {selectedInGroup.length}選択
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-gray-400 text-xs ml-2">{isOpen ? '▲' : '▼'}</span>
+                          </button>
+
+                          {isOpen && (
+                            <div className="px-3 py-3 flex flex-wrap gap-2">
+                              {group.options.map(opt => {
+                                const selected = (form.profile_tags ?? []).includes(opt.id);
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => toggleTag(opt.id, group.single)}
+                                    className={`text-xs px-3 py-1.5 rounded-full border-2 font-medium transition-all ${
+                                      selected
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                                    }`}
+                                  >
+                                    {selected ? '✓ ' : ''}{opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </Field>
+                </Section>
 
-                <Field label="得意分野">
-                  <input
-                    type="text"
-                    value={form.得意分野}
-                    onChange={e => setForm(f => ({ ...f, 得意分野: e.target.value }))}
-                    placeholder={form.職種 === '営業' ? '例：提案書作成・ヒアリング' : '例：工具管理・材料管理'}
-                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                {/* 備考 */}
+                <Section label="備考・メモ（任意）">
+                  <textarea
+                    value={form.備考 ?? ''}
+                    onChange={e => setForm(f => ({ ...f, 備考: e.target.value }))}
+                    placeholder="上司だけが知っている特記事項など"
+                    rows={3}
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none resize-none"
                   />
-                </Field>
-
-                <Field label="苦手分野">
-                  <input
-                    type="text"
-                    value={form.苦手分野}
-                    onChange={e => setForm(f => ({ ...f, 苦手分野: e.target.value }))}
-                    placeholder={form.職種 === '営業' ? '例：クロージング・新規開拓' : '例：書類作成・手順書'}
-                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-                  />
-                </Field>
-
-                <Field label="性格傾向">
-                  <input
-                    type="text"
-                    value={form.性格傾向}
-                    onChange={e => setForm(f => ({ ...f, 性格傾向: e.target.value }))}
-                    placeholder="例：真面目・コツコツ型"
-                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-                  />
-                </Field>
+                </Section>
 
                 <div className="pt-2 flex gap-2">
                   <button
@@ -362,6 +431,7 @@ export default function EmployeesPage() {
           </div>
         )}
 
+        {/* 削除確認 */}
         {deleteTarget && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
@@ -370,16 +440,10 @@ export default function EmployeesPage() {
                 <strong>{deleteTarget.社員名}</strong>（{deleteTarget.employee_id}）を削除します。この操作は元に戻せません。
               </p>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setDeleteTarget(null)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm"
-                >
+                <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm">
                   キャンセル
                 </button>
-                <button
-                  onClick={() => handleDelete(deleteTarget)}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm"
-                >
+                <button onClick={() => handleDelete(deleteTarget)} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm">
                   削除する
                 </button>
               </div>
@@ -394,7 +458,16 @@ export default function EmployeesPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-bold text-gray-700 mb-1.5">{label}</label>
+      <label className="block text-xs font-bold text-gray-600 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-sm font-bold text-gray-800 mb-2 border-l-4 border-blue-500 pl-2">{label}</h3>
       {children}
     </div>
   );

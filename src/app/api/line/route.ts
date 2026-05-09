@@ -5,12 +5,17 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzk2kqRA7sv6fU_0tseXsPx
 export async function POST(req: NextRequest) {
   const body = await req.text();
 
-  fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-    redirect: 'follow',
-  }).catch(() => {});
+  // GASにawaitで転送（転送完了後に200を返す）
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      redirect: 'follow',
+    });
+  } catch {
+    // GASのエラーは無視してLINEには200を返す
+  }
 
   return NextResponse.json({ status: 'ok' });
 }
